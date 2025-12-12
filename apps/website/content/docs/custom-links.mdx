@@ -1,0 +1,393 @@
+---
+title: Custom Link Component
+description: Use custom React components for rendering links with support for internal/external link detection and dialog patterns.
+---
+
+Streamdown allows you to provide a custom link component to control how links are rendered. This is especially useful for implementing features like:
+
+- Showing a dialog/modal for external links before navigating away
+- Adding custom tracking or analytics to link clicks
+- Styling internal vs external links differently
+- Implementing client-side routing for internal links
+
+## Basic Usage
+
+Use the `link` prop to provide a custom link component:
+
+```tsx
+import { Streamdown } from 'streamdown';
+import type { LinkComponentProps } from 'streamdown';
+
+const CustomLink = ({ href, children, isInternal, className }: LinkComponentProps) => {
+  if (isInternal) {
+    // Render internal links normally
+    return <a href={href} className={className}>{children}</a>;
+  }
+
+  // Render external links with a warning icon
+  return (
+    <a href={href} className={className} target="_blank" rel="noopener noreferrer">
+      {children} 🔗
+    </a>
+  );
+};
+
+export default function Page() {
+  const markdown = `
+[Internal Link](/docs)
+[External Link](https://example.com)
+  `;
+
+  return (
+    <Streamdown link={{ component: CustomLink }}>
+      {markdown}
+    </Streamdown>
+  );
+}
+```
+
+## Internal vs External Links
+
+### Defining Internal Links
+
+Use the `allowedPrefixes` option to specify which URL patterns should be considered internal:
+
+```tsx
+<Streamdown
+  link={{
+    component: CustomLink,
+    allowedPrefixes: [
+      '/',                      // Relative URLs
+      'https://mysite.com',     // Same domain
+      '/docs',                  // Specific paths
+    ]
+  }}
+>
+  {markdown}
+</Streamdown>
+```
+
+The `isInternal` prop passed to your custom component will be:
+- `true` if the link starts with any of the `allowedPrefixes`
+- `true` if `allowedPrefixes` is not provided (default: all links are internal)
+- `false` if `allowedPrefixes` is an empty array (all links are external)
+- `false` if the link doesn't start with any of the `allowedPrefixes`
+
+### Examples
+
+```tsx
+// With these prefixes:
+allowedPrefixes: ['/', 'https://mysite.com']
+
+// These links are internal:
+[Link 1](/)
+[Link 2](/about)
+[Link 3](https://mysite.com/page)
+
+// These links are external:
+[Link 4](https://example.com)
+[Link 5](https://google.com)
+```
+
+## Dialog Pattern for External Links
+
+A common use case is to show a confirmation dialog before navigating to external sites:
+
+```tsx
+'use client';
+
+import { useState } from 'react';
+import { Streamdown } from 'streamdown';
+import type { LinkComponentProps } from 'streamdown';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+
+const DialogLink = ({ href, children, isInternal, className }: LinkComponentProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  if (isInternal) {
+    return <a href={href} className={className}>{children}</a>;
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => setIsOpen(true)}
+        className={className}
+        type="button"
+      >
+        {children}
+      </button>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>External Link</DialogTitle>
+            <DialogDescription>
+              You are about to navigate to an external website:
+              <br />
+              <strong className="text-foreground">{href}</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => window.open(href, '_blank', 'noopener,noreferrer')}>
+              Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
+
+export default function Page() {
+  return (
+    <Streamdown
+      link={{
+        component: DialogLink,
+        allowedPrefixes: ['/'],
+      }}
+    >
+      {markdown}
+    </Streamdown>
+  );
+}
+```
+
+## Props Passed to Custom Component
+
+Your custom link component receives the following props:
+
+<TypeTable
+  type={{
+    href: {
+      description: 'The URL or path the link points to',
+      type: 'string | undefined',
+    },
+    children: {
+      description: 'The link text or content',
+      type: 'React.ReactNode',
+    },
+    isInternal: {
+      description: 'Whether the link matches one of the allowedPrefixes',
+      type: 'boolean',
+    },
+    className: {
+      description: 'CSS classes applied by Streamdown (includes text-primary, underline, etc.)',
+      type: 'string | undefined',
+    },
+  }}
+/>
+
+## Client-Side Routing
+
+Use custom link components to integrate with routing libraries like Next.js:
+
+```tsx
+import Link from 'next/link';
+import type { LinkComponentProps } from 'streamdown';
+
+const NextLink = ({ href, children, isInternal, className }: LinkComponentProps) => {
+  if (!href) return <span className={className}>{children}</span>;
+
+  if (isInternal) {
+    return (
+      <Link href={href} className={className}>
+        {children}
+      </Link>
+    );
+  }
+
+  return (
+    <a
+      href={href}
+      className={className}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {children}
+    </a>
+  );
+};
+
+export default function Page() {
+  return (
+    <Streamdown
+      link={{
+        component: NextLink,
+        allowedPrefixes: ['/'],
+      }}
+    >
+      {markdown}
+    </Streamdown>
+  );
+}
+```
+
+## Analytics and Tracking
+
+Track link clicks with custom analytics:
+
+```tsx
+const AnalyticsLink = ({ href, children, isInternal, className }: LinkComponentProps) => {
+  const handleClick = () => {
+    // Track link click
+    analytics.track('Link Clicked', {
+      href,
+      isInternal,
+      text: typeof children === 'string' ? children : 'Link',
+    });
+  };
+
+  return (
+    <a
+      href={href}
+      className={className}
+      onClick={handleClick}
+      target={isInternal ? undefined : '_blank'}
+      rel={isInternal ? undefined : 'noopener noreferrer'}
+    >
+      {children}
+    </a>
+  );
+};
+```
+
+## Styling Internal vs External
+
+Apply different styles to internal and external links:
+
+```tsx
+const StyledLink = ({ href, children, isInternal, className }: LinkComponentProps) => {
+  return (
+    <a
+      href={href}
+      className={cn(
+        className,
+        isInternal ? 'text-blue-600 hover:text-blue-800' : 'text-green-600 hover:text-green-800'
+      )}
+      target={isInternal ? undefined : '_blank'}
+      rel={isInternal ? undefined : 'noopener noreferrer'}
+    >
+      {children}
+      {!isInternal && <ExternalLinkIcon className="ml-1 inline h-4 w-4" />}
+    </a>
+  );
+};
+```
+
+## Edge Cases
+
+### Incomplete Links During Streaming
+
+When markdown is streamed, links may be incomplete. Your component should handle cases where `href` is undefined:
+
+```tsx
+const SafeLink = ({ href, children, isInternal, className }: LinkComponentProps) => {
+  // Handle incomplete links during streaming
+  if (!href || href === 'streamdown:incomplete-link') {
+    return <span className={className}>{children}</span>;
+  }
+
+  return <a href={href} className={className}>{children}</a>;
+};
+```
+
+### Empty vs Undefined allowedPrefixes
+
+The behavior differs based on whether `allowedPrefixes` is provided:
+
+```tsx
+// No allowedPrefixes provided - all links are internal (default permissive)
+<Streamdown link={{ component: CustomLink }}>
+  {markdown}
+</Streamdown>
+
+// Empty array - no links match any prefix, so all are external
+<Streamdown link={{ component: CustomLink, allowedPrefixes: [] }}>
+  {markdown}
+</Streamdown>
+
+// With specific prefixes - only matching links are internal
+<Streamdown link={{ component: CustomLink, allowedPrefixes: ['/'] }}>
+  {markdown}
+</Streamdown>
+```
+
+## Comparison with Mermaid Error Component
+
+The custom link component follows a similar pattern to the Mermaid error component:
+
+| Feature | Mermaid Error Component | Custom Link Component |
+|---------|------------------------|----------------------|
+| **Configuration** | `mermaid.errorComponent` | `link.component` |
+| **Additional Options** | `mermaid.config` | `link.allowedPrefixes` |
+| **Use Case** | Handle rendering errors | Control link behavior |
+| **Props Received** | `error`, `chart`, `retry` | `href`, `children`, `isInternal`, `className` |
+
+## Best Practices
+
+### 1. Preserve Accessibility
+
+Ensure your custom links maintain proper accessibility:
+
+```tsx
+const AccessibleLink = ({ href, children, isInternal, className }: LinkComponentProps) => {
+  return (
+    <a
+      href={href}
+      className={className}
+      aria-label={!isInternal ? `${children} (opens in new tab)` : undefined}
+      target={isInternal ? undefined : '_blank'}
+      rel={isInternal ? undefined : 'noopener noreferrer'}
+    >
+      {children}
+    </a>
+  );
+};
+```
+
+### 2. Handle Loading States
+
+When implementing dialogs, consider loading states:
+
+```tsx
+const [isNavigating, setIsNavigating] = useState(false);
+
+const handleNavigate = async () => {
+  setIsNavigating(true);
+  // Perform any async operations
+  await trackLinkClick(href);
+  window.open(href, '_blank');
+  setIsNavigating(false);
+  setIsOpen(false);
+};
+```
+
+### 3. Use TypeScript
+
+Always type your custom link components for better type safety:
+
+```tsx
+import type { LinkComponentProps } from 'streamdown';
+
+const CustomLink: React.FC<LinkComponentProps> = (props) => {
+  // TypeScript will enforce the correct prop types
+};
+```
+
+## Related Features
+
+- [Security](/docs/security) - Learn about link security and sanitization
+- [Configuration](/docs/configuration) - See all configuration options
+- [Mermaid](/docs/mermaid) - Similar pattern with error components
+- [Custom Components](/docs/styling#custom-components) - Override other markdown elements

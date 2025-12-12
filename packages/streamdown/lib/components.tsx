@@ -211,8 +211,40 @@ MemoStrong.displayName = "MarkdownStrong";
 type AProps = WithNode<JSX.IntrinsicElements["a"]> & { href?: string };
 const MemoA = memo<AProps>(
   ({ children, className, href, node, ...props }: AProps) => {
+    const { link: linkConfig } = useContext(StreamdownContext);
     const isIncomplete = href === "streamdown:incomplete-link";
 
+    // Determine if the link is internal based on allowedPrefixes:
+    // - No href or incomplete link -> always internal
+    // - No allowedPrefixes defined -> all links are internal (default permissive)
+    // - Empty allowedPrefixes array -> no links match, all external
+    // - Non-empty allowedPrefixes -> check if link starts with any prefix
+    const isInternal =
+      !href ||
+      isIncomplete ||
+      !linkConfig?.allowedPrefixes || // undefined = all internal
+      (linkConfig.allowedPrefixes.length > 0 &&
+        linkConfig.allowedPrefixes.some((prefix) => href.startsWith(prefix)));
+
+    // If a custom link component is provided, use it
+    if (linkConfig?.component) {
+      const CustomLink = linkConfig.component;
+      return (
+        <CustomLink
+          className={cn(
+            "wrap-anywhere font-medium text-primary underline",
+            className
+          )}
+          href={href}
+          isInternal={isInternal}
+          {...props}
+        >
+          {children}
+        </CustomLink>
+      );
+    }
+
+    // Default behavior: render a standard anchor tag
     return (
       <a
         className={cn(

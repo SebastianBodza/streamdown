@@ -70,6 +70,18 @@ export type MermaidOptions = {
   errorComponent?: React.ComponentType<MermaidErrorComponentProps>;
 };
 
+export type LinkComponentProps = {
+  href?: string;
+  children?: React.ReactNode;
+  isInternal: boolean;
+  className?: string;
+};
+
+export type LinkOptions = {
+  component?: React.ComponentType<LinkComponentProps>;
+  allowedPrefixes?: string[];
+};
+
 export type StreamdownProps = Options & {
   mode?: "static" | "streaming";
   BlockComponent?: React.ComponentType<BlockProps>;
@@ -78,6 +90,7 @@ export type StreamdownProps = Options & {
   className?: string;
   shikiTheme?: [BundledTheme, BundledTheme];
   mermaid?: MermaidOptions;
+  link?: LinkOptions;
   controls?: ControlsConfig;
   isAnimating?: boolean;
   caret?: keyof typeof carets;
@@ -124,6 +137,7 @@ export type StreamdownContextType = {
   isAnimating: boolean;
   mode: "static" | "streaming";
   mermaid?: MermaidOptions;
+  link?: LinkOptions;
   cdnUrl?: string | null;
 };
 
@@ -133,6 +147,7 @@ const defaultStreamdownContext: StreamdownContextType = {
   isAnimating: false,
   mode: "streaming",
   mermaid: undefined,
+  link: undefined,
   cdnUrl: undefined,
 };
 
@@ -276,6 +291,7 @@ export const Streamdown = memo(
     className,
     shikiTheme = defaultShikiTheme,
     mermaid,
+    link,
     controls = true,
     isAnimating = false,
     BlockComponent = Block,
@@ -337,9 +353,10 @@ export const Streamdown = memo(
         isAnimating,
         mode,
         mermaid,
+        link,
         cdnUrl,
       }),
-      [shikiTheme, controls, isAnimating, mode, mermaid, cdnUrl]
+      [shikiTheme, controls, isAnimating, mode, mermaid, link, cdnUrl]
     );
 
     // Memoize merged components to avoid recreating on every render
