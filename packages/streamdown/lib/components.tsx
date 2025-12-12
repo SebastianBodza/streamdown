@@ -10,7 +10,7 @@ import {
   useContext,
 } from "react";
 // BundledLanguage type removed - we now support any language string
-import { StreamdownContext } from "../index";
+import { StreamdownContext, defaultAllowedLinkPrefixes } from "../index";
 import { CodeBlockCopyButton } from "./code-block/copy-button";
 import { CodeBlockDownloadButton } from "./code-block/download-button";
 import { CodeBlockSkeleton } from "./code-block/skeleton";
@@ -43,8 +43,6 @@ type WithNode<T> = T & {
   children?: React.ReactNode;
   className?: string;
 };
-
-const DEFAULT_ALLOWED_LINK_PREFIXES = ["*"] as const;
 
 function sameNodePosition(prev?: MarkdownNode, next?: MarkdownNode): boolean {
   if (!(prev?.position || next?.position)) {
@@ -79,7 +77,7 @@ function sameClassAndNode(
 
 const isLinkAllowed = (
   href?: string,
-  allowedPrefixes: readonly string[] = DEFAULT_ALLOWED_LINK_PREFIXES
+  allowedPrefixes: readonly string[] = defaultAllowedLinkPrefixes
 ): boolean => {
   if (!href) {
     return false;
@@ -244,7 +242,8 @@ const MemoA = memo<LinkComponentProps>(
   ({ children, className, href, node, ...props }: LinkComponentProps) => {
     const isIncomplete = href === "streamdown:incomplete-link";
     const { links } = useContext(StreamdownContext);
-    const allowedPrefixes = links?.allowedPrefixes ?? DEFAULT_ALLOWED_LINK_PREFIXES;
+    const allowedPrefixes =
+      links?.allowedPrefixes ?? defaultAllowedLinkPrefixes;
     const isAllowed = isLinkAllowed(href, allowedPrefixes);
     const linkProps = {
       ...props,
@@ -261,13 +260,14 @@ const MemoA = memo<LinkComponentProps>(
 
     if (links?.component) {
       const LinkComponent = links.component;
+      const linkComponentProps = {
+        ...linkProps,
+        node,
+        allowedPrefixes,
+        isAllowed,
+      };
       return (
-        <LinkComponent
-          {...linkProps}
-          node={node}
-          allowedPrefixes={allowedPrefixes}
-          isAllowed={isAllowed}
-        >
+        <LinkComponent {...linkComponentProps}>
           {children}
         </LinkComponent>
       );

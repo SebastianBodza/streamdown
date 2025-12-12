@@ -63,7 +63,7 @@ export type ControlsConfig =
           };
     };
 
-const defaultAllowedLinkPrefixes = ["*"] as const;
+export const defaultAllowedLinkPrefixes = ["*"] as const;
 
 export type LinkOptions = {
   allowedPrefixes?: readonly string[];
