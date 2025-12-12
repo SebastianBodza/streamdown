@@ -95,6 +95,10 @@ Streamdown can be configured to suit your needs. This guide will walk you throug
       description: 'Mermaid diagram configuration and error handling',
       type: 'MermaidOptions',
     },
+    link: {
+      description: 'Custom link component and internal/external link detection',
+      type: 'LinkOptions',
+    },
     controls: {
       description: 'Control visibility of interactive buttons',
       type: 'ControlsConfig',
@@ -119,6 +123,25 @@ The `mermaid` prop accepts an object with the following properties:
     },
   }}
 />
+
+### Link Options
+
+The `link` prop accepts an object with the following properties:
+
+<TypeTable
+  type={{
+    component: {
+      description: 'Custom React component for rendering links',
+      type: 'React.ComponentType<LinkComponentProps>',
+    },
+    allowedPrefixes: {
+      description: 'URL prefixes that should be considered internal links',
+      type: 'string[]',
+    },
+  }}
+/>
+
+See the [Custom Link Component](/docs/custom-links) documentation for detailed usage examples.
 
 ## Advanced Props
 
