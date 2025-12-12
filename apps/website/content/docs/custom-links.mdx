@@ -69,8 +69,9 @@ Use the `allowedPrefixes` option to specify which URL patterns should be conside
 
 The `isInternal` prop passed to your custom component will be:
 - `true` if the link starts with any of the `allowedPrefixes`
-- `true` if `allowedPrefixes` is empty or not provided
-- `false` otherwise
+- `true` if `allowedPrefixes` is not provided (default: all links are internal)
+- `false` if `allowedPrefixes` is an empty array (all links are external)
+- `false` if the link doesn't start with any of the `allowedPrefixes`
 
 ### Examples
 
@@ -301,18 +302,23 @@ const SafeLink = ({ href, children, isInternal, className }: LinkComponentProps)
 };
 ```
 
-### Empty allowedPrefixes
+### Empty vs Undefined allowedPrefixes
 
-When `allowedPrefixes` is an empty array, all links are considered internal:
+The behavior differs based on whether `allowedPrefixes` is provided:
 
 ```tsx
-// All links will be marked as internal
+// No allowedPrefixes provided - all links are internal (default permissive)
+<Streamdown link={{ component: CustomLink }}>
+  {markdown}
+</Streamdown>
+
+// Empty array - no links match any prefix, so all are external
 <Streamdown link={{ component: CustomLink, allowedPrefixes: [] }}>
   {markdown}
 </Streamdown>
 
-// Same behavior - no prefixes means all internal
-<Streamdown link={{ component: CustomLink }}>
+// With specific prefixes - only matching links are internal
+<Streamdown link={{ component: CustomLink, allowedPrefixes: ['/'] }}>
   {markdown}
 </Streamdown>
 ```

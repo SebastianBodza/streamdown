@@ -218,10 +218,9 @@ const MemoA = memo<AProps>(
     const isInternal =
       !href ||
       isIncomplete ||
-      (linkConfig?.allowedPrefixes ?? []).length === 0 ||
-      (linkConfig?.allowedPrefixes ?? []).some((prefix) =>
-        href.startsWith(prefix)
-      );
+      !linkConfig?.allowedPrefixes || // No prefixes defined = all internal (default)
+      (linkConfig.allowedPrefixes.length > 0 &&
+        linkConfig.allowedPrefixes.some((prefix) => href.startsWith(prefix)));
 
     // If a custom link component is provided, use it
     if (linkConfig?.component) {

@@ -168,7 +168,8 @@ describe("Custom Link Component", () => {
       );
 
       const link = container.querySelector("a");
-      expect(link?.getAttribute("data-is-internal")).toBe("true");
+      // Empty allowedPrefixes means no prefixes match, so links are external
+      expect(link?.getAttribute("data-is-internal")).toBe("false");
     });
   });
 
@@ -238,7 +239,7 @@ describe("Custom Link Component", () => {
         </a>
       );
 
-      // Incomplete link - remend will complete it with streamdown:incomplete-link
+      // Incomplete link - Remend will complete it with streamdown:incomplete-link
       const markdown = "[Link text](";
       const { container } = render(
         <Streamdown link={{ component: CustomLink }}>
