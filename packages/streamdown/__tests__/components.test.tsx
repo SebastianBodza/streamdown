@@ -1,12 +1,21 @@
 import { render, waitFor } from "@testing-library/react";
 import React from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { components as importedComponents } from "../lib/components";
+import { StreamdownContext } from "../index";
 import type { Options } from "../lib/markdown";
 
 // Type assertion: we know all components are defined in our implementation
 type RequiredComponents = Required<NonNullable<Options["components"]>>;
 const components = importedComponents as RequiredComponents;
+const baseContext = {
+  shikiTheme: ["github-light", "github-dark"] as [string, string],
+  controls: true,
+  isAnimating: false,
+  mode: "streaming" as const,
+  mermaid: undefined,
+  cdnUrl: undefined,
+};
 
 describe("Markdown Components", () => {
   describe("List Components", () => {
@@ -181,6 +190,80 @@ describe("Markdown Components", () => {
       expect(link?.getAttribute("data-incomplete")).toBe("true");
       expect(link?.getAttribute("href")).toBe("streamdown:incomplete-link");
       expect(link?.textContent).toBe("Incomplete link text");
+    });
+
+    it("should render custom link component with allowed state", () => {
+      const A = components.a;
+      if (!A) {
+        throw new Error("A component not found");
+      }
+      const CustomLink = vi.fn(
+        ({ children }: { children: React.ReactNode }) => (
+          <button data-testid="custom-link">{children}</button>
+        )
+      );
+      const { container } = render(
+        <StreamdownContext.Provider
+          value={{
+            ...baseContext,
+            links: {
+              component: CustomLink,
+              allowedPrefixes: ["https://internal.example.com"],
+            },
+          }}
+        >
+          <A href="https://external.example.com" node={null as any}>
+            External link
+          </A>
+        </StreamdownContext.Provider>
+      );
+      const link = container.querySelector('[data-testid="custom-link"]');
+      expect(link).toBeTruthy();
+      expect(CustomLink).toHaveBeenCalled();
+      const firstCall = CustomLink.mock.calls[0]?.[0] as {
+        isAllowed?: boolean;
+        allowedPrefixes?: readonly string[];
+      };
+      expect(firstCall?.isAllowed).toBe(false);
+      expect(firstCall?.allowedPrefixes).toEqual([
+        "https://internal.example.com",
+      ]);
+    });
+
+    it("should treat allowed and relative links as safe", () => {
+      const A = components.a;
+      if (!A) {
+        throw new Error("A component not found");
+      }
+      const CustomLink = vi.fn(
+        ({ children }: { children: React.ReactNode }) => (
+          <a data-testid="custom-link">{children}</a>
+        )
+      );
+      render(
+        <StreamdownContext.Provider
+          value={{
+            ...baseContext,
+            links: {
+              component: CustomLink,
+              allowedPrefixes: ["https://internal.example.com"],
+            },
+          }}
+        >
+          <>
+            <A href="/docs/internal" node={null as any}>
+              Internal link
+            </A>
+            <A href="https://internal.example.com/page" node={null as any}>
+              Allowed link
+            </A>
+          </>
+        </StreamdownContext.Provider>
+      );
+      const calls = CustomLink.mock.calls.map(
+        (call) => call[0] as { isAllowed?: boolean }
+      );
+      expect(calls.every((call) => call?.isAllowed === true)).toBe(true);
     });
 
     it("should render blockquote with correct classes", () => {

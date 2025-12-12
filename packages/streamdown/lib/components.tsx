@@ -44,6 +44,8 @@ type WithNode<T> = T & {
   className?: string;
 };
 
+const DEFAULT_ALLOWED_LINK_PREFIXES = ["*"] as const;
+
 function sameNodePosition(prev?: MarkdownNode, next?: MarkdownNode): boolean {
   if (!(prev?.position || next?.position)) {
     return true;
@@ -74,6 +76,30 @@ function sameClassAndNode(
     prev.className === next.className && sameNodePosition(prev.node, next.node)
   );
 }
+
+const isLinkAllowed = (
+  href?: string,
+  allowedPrefixes: readonly string[] = DEFAULT_ALLOWED_LINK_PREFIXES
+): boolean => {
+  if (!href) {
+    return false;
+  }
+
+  if (
+    href.startsWith("#") ||
+    href.startsWith("/") ||
+    href.startsWith(".") ||
+    !href.includes("://")
+  ) {
+    return true;
+  }
+
+  if (allowedPrefixes.length === 0 || allowedPrefixes.includes("*")) {
+    return true;
+  }
+
+  return allowedPrefixes.some((prefix) => href.startsWith(prefix));
+};
 
 const shouldShowControls = (
   config:
@@ -209,26 +235,45 @@ const MemoStrong = memo<StrongProps>(
 MemoStrong.displayName = "MarkdownStrong";
 
 type AProps = WithNode<JSX.IntrinsicElements["a"]> & { href?: string };
-const MemoA = memo<AProps>(
-  ({ children, className, href, node, ...props }: AProps) => {
-    const isIncomplete = href === "streamdown:incomplete-link";
+export type LinkComponentProps = AProps & {
+  allowedPrefixes?: readonly string[];
+  isAllowed: boolean;
+};
 
-    return (
-      <a
-        className={cn(
-          "wrap-anywhere font-medium text-primary underline",
-          className
-        )}
-        data-incomplete={isIncomplete}
-        data-streamdown="link"
-        href={href}
-        rel="noreferrer"
-        target="_blank"
-        {...props}
-      >
-        {children}
-      </a>
-    );
+const MemoA = memo<LinkComponentProps>(
+  ({ children, className, href, node, ...props }: LinkComponentProps) => {
+    const isIncomplete = href === "streamdown:incomplete-link";
+    const { links } = useContext(StreamdownContext);
+    const allowedPrefixes = links?.allowedPrefixes ?? DEFAULT_ALLOWED_LINK_PREFIXES;
+    const isAllowed = isLinkAllowed(href, allowedPrefixes);
+    const linkProps = {
+      ...props,
+      className: cn(
+        "wrap-anywhere font-medium text-primary underline",
+        className
+      ),
+      "data-incomplete": isIncomplete,
+      "data-streamdown": "link",
+      href,
+      rel: "noreferrer",
+      target: "_blank",
+    };
+
+    if (links?.component) {
+      const LinkComponent = links.component;
+      return (
+        <LinkComponent
+          {...linkProps}
+          node={node}
+          allowedPrefixes={allowedPrefixes}
+          isAllowed={isAllowed}
+        >
+          {children}
+        </LinkComponent>
+      );
+    }
+
+    return <a {...linkProps}>{children}</a>;
   },
   (p, n) => sameClassAndNode(p, n) && p.href === n.href
 );
