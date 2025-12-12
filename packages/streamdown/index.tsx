@@ -58,10 +58,10 @@ export type ControlsConfig =
         | {
             download?: boolean;
             copy?: boolean;
-             fullscreen?: boolean;
-             panZoom?: boolean;
-           };
-     };
+            fullscreen?: boolean;
+            panZoom?: boolean;
+          };
+    };
 
 const defaultAllowedLinkPrefixes = ["*"] as const;
 
