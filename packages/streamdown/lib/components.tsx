@@ -10,7 +10,7 @@ import {
   useContext,
 } from "react";
 // BundledLanguage type removed - we now support any language string
-import { StreamdownContext } from "../index";
+import { StreamdownContext, defaultAllowedLinkPrefixes } from "../index";
 import { CodeBlockCopyButton } from "./code-block/copy-button";
 import { CodeBlockDownloadButton } from "./code-block/download-button";
 import { CodeBlockSkeleton } from "./code-block/skeleton";
@@ -74,6 +74,30 @@ function sameClassAndNode(
     prev.className === next.className && sameNodePosition(prev.node, next.node)
   );
 }
+
+const isLinkAllowed = (
+  href?: string,
+  allowedPrefixes: readonly string[] = defaultAllowedLinkPrefixes
+): boolean => {
+  if (!href) {
+    return false;
+  }
+
+  if (
+    href.startsWith("#") ||
+    href.startsWith("/") ||
+    href.startsWith(".") ||
+    !href.includes("://")
+  ) {
+    return true;
+  }
+
+  if (allowedPrefixes.length === 0 || allowedPrefixes.includes("*")) {
+    return true;
+  }
+
+  return allowedPrefixes.some((prefix) => href.startsWith(prefix));
+};
 
 const shouldShowControls = (
   config:
@@ -209,26 +233,47 @@ const MemoStrong = memo<StrongProps>(
 MemoStrong.displayName = "MarkdownStrong";
 
 type AProps = WithNode<JSX.IntrinsicElements["a"]> & { href?: string };
-const MemoA = memo<AProps>(
-  ({ children, className, href, node, ...props }: AProps) => {
-    const isIncomplete = href === "streamdown:incomplete-link";
+export type LinkComponentProps = AProps & {
+  allowedPrefixes?: readonly string[];
+  isAllowed: boolean;
+};
 
-    return (
-      <a
-        className={cn(
-          "wrap-anywhere font-medium text-primary underline",
-          className
-        )}
-        data-incomplete={isIncomplete}
-        data-streamdown="link"
-        href={href}
-        rel="noreferrer"
-        target="_blank"
-        {...props}
-      >
-        {children}
-      </a>
-    );
+const MemoA = memo<LinkComponentProps>(
+  ({ children, className, href, node, ...props }: LinkComponentProps) => {
+    const isIncomplete = href === "streamdown:incomplete-link";
+    const { links } = useContext(StreamdownContext);
+    const allowedPrefixes =
+      links?.allowedPrefixes ?? defaultAllowedLinkPrefixes;
+    const isAllowed = isLinkAllowed(href, allowedPrefixes);
+    const linkProps = {
+      ...props,
+      className: cn(
+        "wrap-anywhere font-medium text-primary underline",
+        className
+      ),
+      "data-incomplete": isIncomplete,
+      "data-streamdown": "link",
+      href,
+      rel: "noreferrer",
+      target: "_blank",
+    };
+
+    if (links?.component) {
+      const LinkComponent = links.component;
+      const linkComponentProps = {
+        ...linkProps,
+        node,
+        allowedPrefixes,
+        isAllowed,
+      };
+      return (
+        <LinkComponent {...linkComponentProps}>
+          {children}
+        </LinkComponent>
+      );
+    }
+
+    return <a {...linkProps}>{children}</a>;
   },
   (p, n) => sameClassAndNode(p, n) && p.href === n.href
 );

@@ -51,3 +51,25 @@ export default function Page() {
 ```
 
 For more info, see the [documentation](https://streamdown.ai/docs).
+
+## Custom link handling
+
+Pass a custom link component through the `links` prop to control how external links are handled. Streamdown will tell your component whether a link is allowed based on the prefixes you provide.
+
+```tsx
+<Streamdown
+  links={{
+    allowedPrefixes: ["https://your-app.com"],
+    component: ({ isAllowed, href, children, ...props }) =>
+      isAllowed ? (
+        <a {...props} href={href}>
+          {children}
+        </a>
+      ) : (
+        <ConfirmDialog href={href}>{children}</ConfirmDialog>
+      ),
+  }}
+>
+  {markdown}
+</Streamdown>
+```

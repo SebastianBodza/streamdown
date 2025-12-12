@@ -22,7 +22,10 @@ import remarkMath from "remark-math";
 import remend, { type RemendOptions } from "remend";
 import type { BundledTheme } from "shiki";
 import type { Pluggable } from "unified";
-import { components as defaultComponents } from "./lib/components";
+import {
+  components as defaultComponents,
+  type LinkComponentProps,
+} from "./lib/components";
 import { Markdown, type Options } from "./lib/markdown";
 import { parseMarkdownIntoBlocks } from "./lib/parse-blocks";
 import { cn } from "./lib/utils";
@@ -36,6 +39,7 @@ const END_DOLLAR_PATTERN = /[^$]\$$/;
 export type { MermaidConfig } from "mermaid";
 export type { RemendOptions } from "remend";
 export type { BundledLanguageName } from "./lib/code-block/bundled-languages";
+export type { LinkComponentProps } from "./lib/components";
 
 // biome-ignore lint/performance/noBarrelFile: "required"
 export {
@@ -59,6 +63,13 @@ export type ControlsConfig =
           };
     };
 
+export const defaultAllowedLinkPrefixes = ["*"] as const;
+
+export type LinkOptions = {
+  allowedPrefixes?: readonly string[];
+  component?: React.ComponentType<LinkComponentProps>;
+};
+
 export type MermaidErrorComponentProps = {
   error: string;
   chart: string;
@@ -78,6 +89,7 @@ export type StreamdownProps = Options & {
   className?: string;
   shikiTheme?: [BundledTheme, BundledTheme];
   mermaid?: MermaidOptions;
+  links?: LinkOptions;
   controls?: ControlsConfig;
   isAnimating?: boolean;
   caret?: keyof typeof carets;
@@ -93,7 +105,7 @@ export const defaultRehypePlugins: Record<string, Pluggable> = {
     harden,
     {
       allowedImagePrefixes: ["*"],
-      allowedLinkPrefixes: ["*"],
+      allowedLinkPrefixes: defaultAllowedLinkPrefixes,
       allowedProtocols: ["*"],
       defaultOrigin: undefined,
       allowDataImages: true,
@@ -112,6 +124,10 @@ export const defaultRemarkPlugins: Record<string, Pluggable> = {
 const defaultRehypePluginsArray = Object.values(defaultRehypePlugins);
 const defaultRemarkPluginsArray = Object.values(defaultRemarkPlugins);
 
+const defaultLinkOptions: LinkOptions = {
+  allowedPrefixes: defaultAllowedLinkPrefixes,
+};
+
 const carets = {
   block: " ▋",
   circle: " ●",
@@ -125,6 +141,7 @@ export type StreamdownContextType = {
   mode: "static" | "streaming";
   mermaid?: MermaidOptions;
   cdnUrl?: string | null;
+  links?: LinkOptions;
 };
 
 const defaultStreamdownContext: StreamdownContextType = {
@@ -134,6 +151,7 @@ const defaultStreamdownContext: StreamdownContextType = {
   mode: "streaming",
   mermaid: undefined,
   cdnUrl: undefined,
+  links: defaultLinkOptions,
 };
 
 export const StreamdownContext = createContext<StreamdownContextType>(
@@ -276,6 +294,7 @@ export const Streamdown = memo(
     className,
     shikiTheme = defaultShikiTheme,
     mermaid,
+    links = defaultLinkOptions,
     controls = true,
     isAnimating = false,
     BlockComponent = Block,
@@ -338,8 +357,9 @@ export const Streamdown = memo(
         mode,
         mermaid,
         cdnUrl,
+        links,
       }),
-      [shikiTheme, controls, isAnimating, mode, mermaid, cdnUrl]
+      [shikiTheme, controls, isAnimating, mode, mermaid, cdnUrl, links]
     );
 
     // Memoize merged components to avoid recreating on every render
